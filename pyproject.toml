@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "cached-proxy"
+version = "0.1.0"
+description = ""
+authors = []
+packages = []
+
+[tool.poetry.dependencies]
+python = ">=3.9"
+fastapi = { extras = ["all"], version = "^0.101.0" }
+uvicorn = { extras = ["standard"], version = "^0.23.2" }
+httpx = { extras = ["http2"], version = "^0.24.1" }
+diskcache = "^5.6.1"
+brotli-asgi = "^1.4.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

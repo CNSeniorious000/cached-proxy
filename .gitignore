@@ -1,0 +1,6 @@
+.cache
+.env
+.vscode
+.idea
+poetry.lock
+**/__pycache__
