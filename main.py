@@ -7,7 +7,7 @@ from blosc2 import Codec, Filter, compress, decompress
 from brotli_asgi import BrotliMiddleware
 from diskcache import Cache
 from dotenv import load_dotenv
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from httpx import AsyncClient
 
@@ -23,7 +23,8 @@ excluded_headers = {
 } | set(getenv("EXCLUDED_HEADERS", "").split())
 replace = getenv("REPLACE", "")
 proxy_slug = getenv("PROXY_SLUG", "proxy")
-proxy_sites = eval(getenv("PROXY_SITES", "()"))
+proxy_sites = set(eval(getenv("PROXY_SITES", "()")))
+bypass_sites = set(eval(getenv("BYPASS_SITES", "()")))
 
 
 client = AsyncClient(http2=True, base_url=baseurl)
@@ -38,7 +39,7 @@ def decorate_body(body: bytes):
         return body
 
     body = body.replace(baseurl.encode(), replace.encode())
-    for site in proxy_sites:
+    for site in proxy_sites | bypass_sites:
         body = body.replace(site.encode(), f"/proxy/{site}".encode())
     return body
 
@@ -102,8 +103,11 @@ async def fetch(url: str):
 if replace and proxy_sites:
 
     @app.get(f"/{proxy_slug}/{{path:path}}")
-    async def proxy_external_resources(path: str):
-        return await fetch(path)
+    async def proxy_external_resources(path: str, request: Request):
+        for i in bypass_sites:
+            if path.startswith(i):
+                return Response(None, 204)
+        return await fetch(f"{path}?{request.url.query}")
 
 
 @app.get("/{path:path}")
