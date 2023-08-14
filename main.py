@@ -1,14 +1,15 @@
 from os import getenv
 from time import time
+from traceback import format_exc
 from urllib.parse import urljoin
 
+from brotli_asgi import BrotliMiddleware
 from diskcache import Cache
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from httpx import AsyncClient
-from brotli_asgi import BrotliMiddleware
 
 load_dotenv()
 
@@ -29,7 +30,7 @@ app.add_middleware(CORSMiddleware, allow_origins="*", max_age=min_age)
 
 
 @app.get("/{path:path}")
-async def proxy_handler(path: str | None = ""):
+async def handle_get_request(path: str | None = ""):
     cache_key = (baseurl, path)
     hit = cache.get(cache_key)
 
@@ -83,3 +84,15 @@ async def proxy_handler(path: str | None = ""):
     common_headers["x-diskcache-age"] = f"{time() - hit['timestamp']:.0f}"
 
     return Response(hit["body"], hit["status"], common_headers | hit["headers"])
+
+
+@app.head("/{path:path}")
+async def handle_head_request(path: str | None = ""):
+    res: Response = await handle_get_request(path)
+    res.body = None
+    return res
+
+
+@app.exception_handler(Exception)
+async def handle_exception(*_):
+    return Response(format_exc(), 500, media_type="text/plain")
