@@ -26,7 +26,7 @@ client = AsyncClient(http2=True, base_url=baseurl)
 cache = Cache(".cache", eviction_policy="none", statics=True)
 app = FastAPI(openapi_url=None)
 app.add_middleware(BrotliMiddleware)
-app.add_middleware(CORSMiddleware, allow_origins="*", max_age=min_age)
+app.add_middleware(CORSMiddleware, allow_origins="*", max_age=min_age or None)
 
 
 @app.get("/{path:path}")
@@ -37,7 +37,7 @@ async def handle_get_request(path: str | None = ""):
     hits, misses = cache.stats()
     common_headers = {"x-diskcache-hits": str(hits), "x-diskcache-misses": str(misses)}
 
-    if not hit or (age := time() - hit["timestamp"]) > min_age:
+    if not hit or min_age and (age := time() - hit["timestamp"]) > min_age:
         url = urljoin(baseurl, path)
 
         print(f"\n < fetch {url!r}")
@@ -59,7 +59,7 @@ async def handle_get_request(path: str | None = ""):
         if "location" in res_headers:
             res_headers["location"] = res_headers["location"].replace(baseurl, "")
 
-        if res_status < 400:
+        if res_status < 400 or res_status:
             cache.set(
                 cache_key,
                 {
