@@ -3,6 +3,7 @@ from time import time
 from traceback import format_exc
 from urllib.parse import urljoin
 
+from blosc2 import Codec, Filter, compress, decompress
 from brotli_asgi import BrotliMiddleware
 from diskcache import Cache
 from dotenv import load_dotenv
@@ -21,6 +22,7 @@ excluded_headers = {
     "content-security-policy",
     "connection",
 } | set(getenv("EXCLUDED_HEADERS", "").split())
+replace = getenv("REPLACE", "")
 
 client = AsyncClient(http2=True, base_url=baseurl)
 cache = Cache(".cache", eviction_policy="none", statics=True)
@@ -57,13 +59,13 @@ async def handle_get_request(path: str | None = ""):
         print()
 
         if "location" in res_headers:
-            res_headers["location"] = res_headers["location"].replace(baseurl, "")
+            res_headers["location"] = res_headers["location"].replace(baseurl, replace)
 
         if res_status < 400 or res_status:
             cache.set(
                 cache_key,
                 {
-                    "body": res_body,
+                    "body": compress(res_body, 1, 9, Filter.NOFILTER, Codec.LZ4),
                     "headers": dict(res_headers),
                     "status": res_status,
                     "timestamp": time(),
@@ -71,7 +73,7 @@ async def handle_get_request(path: str | None = ""):
             )
             age = 0
         elif hit:
-            res_body = hit["body"]
+            res_body = decompress(hit["body"])
             res_status = hit["status"]
             res_headers = hit["headers"]
         else:
@@ -83,7 +85,9 @@ async def handle_get_request(path: str | None = ""):
 
     common_headers["x-diskcache-age"] = f"{time() - hit['timestamp']:.0f}"
 
-    return Response(hit["body"], hit["status"], common_headers | hit["headers"])
+    return Response(
+        decompress(hit["body"]), hit["status"], common_headers | hit["headers"]
+    )
 
 
 @app.head("/{path:path}")
