@@ -7,9 +7,8 @@ from blosc2 import Codec, Filter, compress, decompress
 from brotli_asgi import BrotliMiddleware
 from diskcache import Cache
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
 from httpx import AsyncClient
 
 load_dotenv()
@@ -23,6 +22,9 @@ excluded_headers = {
     "connection",
 } | set(getenv("EXCLUDED_HEADERS", "").split())
 replace = getenv("REPLACE", "")
+proxy_slug = getenv("PROXY_SLUG", "proxy")
+proxy_sites = eval(getenv("PROXY_SITES", "()"))
+
 
 client = AsyncClient(http2=True, base_url=baseurl)
 cache = Cache(".cache", eviction_policy="none", statics=True)
@@ -31,23 +33,30 @@ app.add_middleware(BrotliMiddleware)
 app.add_middleware(CORSMiddleware, allow_origins="*", max_age=min_age or None)
 
 
-@app.get("/{path:path}")
-async def handle_get_request(path: str | None = ""):
-    cache_key = (baseurl, path)
+def decorate_body(body: bytes):
+    if not replace:
+        return body
+
+    body = body.replace(baseurl.encode(), replace.encode())
+    for site in proxy_sites:
+        body = body.replace(site.encode(), f"/proxy/{site}".encode())
+    return body
+
+
+async def fetch(url: str):
+    cache_key = url
     hit = cache.get(cache_key)
 
     hits, misses = cache.stats()
     common_headers = {"x-diskcache-hits": str(hits), "x-diskcache-misses": str(misses)}
 
     if not hit or min_age and (age := time() - hit["timestamp"]) > min_age:
-        url = urljoin(baseurl, path)
-
         print(f"\n < fetch {url!r}")
 
         res = await client.get(url)
 
         res_headers = res.headers.copy()
-        res_body = res.read()
+        res_body = decorate_body(res.read())
         res_status = res.status_code
 
         for h in excluded_headers:
@@ -88,6 +97,20 @@ async def handle_get_request(path: str | None = ""):
     return Response(
         decompress(hit["body"]), hit["status"], common_headers | hit["headers"]
     )
+
+
+if replace and proxy_sites:
+
+    @app.get(f"/{proxy_slug}/{{path:path}}")
+    async def proxy_external_resources(path: str):
+        return await fetch(path)
+
+
+@app.get("/{path:path}")
+async def handle_get_request(path: str | None = ""):
+    url = urljoin(baseurl, path)
+
+    return await fetch(url)
 
 
 @app.head("/{path:path}")
