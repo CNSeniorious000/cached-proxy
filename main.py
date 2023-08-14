@@ -89,8 +89,7 @@ async def handle_get_request(path: str | None = ""):
 @app.head("/{path:path}")
 async def handle_head_request(path: str | None = ""):
     res: Response = await handle_get_request(path)
-    res.body = None
-    return res
+    return Response(None, res.status_code, res.headers)
 
 
 @app.exception_handler(Exception)
