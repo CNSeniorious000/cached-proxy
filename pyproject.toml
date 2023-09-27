@@ -6,13 +6,19 @@ authors = []
 packages = []
 
 [tool.poetry.dependencies]
-python = ">=3.9,<4"
+python = "^3.10"
 fastapi = { extras = ["all"], version = "^0.103.1" }
 uvicorn = { extras = ["standard"], version = "^0.23.2" }
 httpx = { extras = ["http2"], version = "^0.25.0" }
 diskcache = "^5.6.3"
 brotli-asgi = "^1.4.0"
 blosc2 = "^2.2.7"
+pydantic-settings = "^2.0.3"
+promplate = "^0.2.1"
+
+
+[tool.black]
+line-length = 200
 
 
 [build-system]
