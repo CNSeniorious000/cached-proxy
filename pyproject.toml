@@ -7,12 +7,12 @@ packages = []
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4"
-fastapi = { extras = ["all"], version = "^0.101.0" }
+fastapi = { extras = ["all"], version = "^0.103.1" }
 uvicorn = { extras = ["standard"], version = "^0.23.2" }
-httpx = { extras = ["http2"], version = "^0.24.1" }
-diskcache = "^5.6.1"
+httpx = { extras = ["http2"], version = "^0.25.0" }
+diskcache = "^5.6.3"
 brotli-asgi = "^1.4.0"
-blosc2 = "^2.2.6"
+blosc2 = "^2.2.7"
 
 
 [build-system]
