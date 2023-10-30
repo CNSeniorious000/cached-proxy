@@ -77,18 +77,20 @@ async def crawl(url: str, visited_urls):
     if not url.startswith("/zh-hans") and count > 100:
         return
 
-    tasks = []
-
     links = await get_links(url)
 
     from random import random, shuffle
 
     shuffle(links)
 
-    for i in links:
-        if i and is_same_origin(i) and not i.startswith("#") and i not in visited_urls:
-            tasks.append(create_task(crawl(i, visited_urls)))
-
+    tasks = [
+        create_task(crawl(i, visited_urls))
+        for i in links
+        if i
+        and is_same_origin(i)
+        and not i.startswith("#")
+        and i not in visited_urls
+    ]
     print(f"{count:>7} + {len(tasks):>4} > {url}")
     await gather(*tasks)
 
