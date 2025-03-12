@@ -1,5 +1,6 @@
 from time import time
 from traceback import format_exc
+from typing import TypedDict
 from urllib.parse import urljoin
 
 from blosc2 import Codec, Filter, compress, decompress
@@ -12,8 +13,16 @@ from promplate import ChainContext
 
 from env import env
 
+
+class Info(TypedDict):
+    body: bytes
+    headers: dict[str, str]
+    status: int
+    timestamp: float
+
+
 client = AsyncClient(http2=True, base_url=env.baseurl)
-cache = Cache(".cache", eviction_policy="none", statics=True)
+cache = Cache[str, Info](".cache", eviction_policy="none", statics=True)
 app = FastAPI(openapi_url=None)
 app.add_middleware(BrotliMiddleware)
 app.add_middleware(CORSMiddleware, allow_origins="*", max_age=env.min_age or None)
