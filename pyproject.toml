@@ -7,7 +7,7 @@ packages = []
 
 [tool.poetry.dependencies]
 python = "^3.10"
-fastapi = { extras = ["all"], version = "^0.103.1" }
+fastapi = { extras = ["all"], version = "^0.115.0" }
 uvicorn = { extras = ["standard"], version = "^0.23.2" }
 httpx = { extras = ["http2"], version = "^0.25.0" }
 diskcache = "^5.6.3"
